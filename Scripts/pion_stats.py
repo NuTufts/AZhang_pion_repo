@@ -200,20 +200,24 @@ for entry in t1:
 
         # record what happened to the pion; 0 for un-contained, 1 for contained and ranged out, 2 for decay in flight, 3 for secondary interactions
         p_History[0] = 999
+        KE = event_pions[i].true_EndE[3] - np.sqrt(event_pions[i].true_EndE[3]**2 
+        - (event_pions[i].true_EndE[0]**2 + event_pions[i].true_EndE[1]**2 + event_pions[i].true_EndE[2]**2))
         if (event_pions[i].contained == 0):
             p_History[0] = 0
             print("UNCONTAINED")
-        elif (np.linalg.norm(np.array(event_pions[i].true_EndE)) == 0):
+        elif(KE <= 10):
             p_History[0] = 1
             print("RANGE OUT")
         elif (secondary_mode == 1):
             p_History[0] = 2
-            tracklength = np.linalg.norm(np.array(event_pions[i].init_pos) - np.array(event_pions[i].secondary_init_pos[0]))
+            tracklength = np.linalg.norm(np.array(event_pions[i].init_pos) 
+            - np.array(event_pions[i].secondary_init_pos[0]))
             p_Tracklength[0] = tracklength
             print("DECAY")
         elif (secondary_mode == 2):
             p_History[0] = 3
-            tracklength = np.linalg.norm(np.array(event_pions[i].init_pos) - np.array(event_pions[i].secondary_init_pos[0]))
+            tracklength = np.linalg.norm(np.array(event_pions[i].init_pos) 
+            - np.array(event_pions[i].secondary_init_pos[0]))
             p_Tracklength[0] = tracklength
             print("SEC INTERACT")
         if (p_History[0] == 999):
