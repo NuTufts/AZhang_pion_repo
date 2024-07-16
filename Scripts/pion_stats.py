@@ -39,9 +39,10 @@ def mom_angle(mv1, mv2):
     return angle
         
 class pion_container:
-    def __init__(self, true_trackID, true_pionE, xsecWeight, Contained, EventID, CCNC, init_pos):
+    def __init__(self, true_trackID, true_pionE, true_endE, xsecWeight, Contained, EventID, CCNC, init_pos):
         self.true_trackID = true_trackID
         self.true_pionE = true_pionE
+        self.true_endE = true_endE
         self.xsecWeight = xsecWeight
         self.contained = Contained
         self.EventID = EventID
@@ -122,6 +123,10 @@ for entry in t1:
     trueSimPartY = entry.trueSimPartY
     trueSimPartZ = entry.trueSimPartZ
     event = entry.event
+    # trueSimPartEndE = entry.trueSimPartEndE
+    # trueSimPartEndPx = entry.trueSimPartEndPx
+    # trueSimPartEndPy = entry.trueSimPartEndPy
+    # trueSimPartEndPz = entry.trueSimPartEndPz
 
     # Find pion truth Data
     pion_mv = 0
@@ -131,6 +136,7 @@ for entry in t1:
             if (trueSimPartPDG[i] == 211 or trueSimPartPDG[i] == -211):
                 init_pos = [trueSimPartX, trueSimPartY, trueSimPartZ]
                 TrueE = [trueSimPartPx[i], trueSimPartPy[i], trueSimPartPz[i], trueSimPartE[i]]
+                # EndE = [trueSimPartEndPx[i], trueSimPartEndPy[i], trueSimPartEndPz[i], trueSimPartEndE[i]]
                 Contained = trueSimPartContained[i]
                 TID = trueSimPartTID[i]
                 EventID = event
@@ -138,6 +144,7 @@ for entry in t1:
                 CCNC = trueNuCCNC
                 pion_mv = [trueSimPartPx[i], trueSimPartPy[i], trueSimPartPz[i]]
                 pion = pion_container(TID, TrueE, EventWeight, Contained, EventID, CCNC, init_pos)
+                # pion = pion_container(TID, TrueE, EndE, EventWeight, Contained, EventID, CCNC, init_pos)
                 event_pions.append(pion)
 #                print("pion found")
 
@@ -196,7 +203,7 @@ for entry in t1:
         if (event_pions[i].contained == 0):
             p_History[0] = 0
             print("UNCONTAINED")
-        elif (event_pions[i].nsecondaries == 0):
+        elif (np.linalg.norm(np.array(event_pions[i].true_EndE)) == 0):
             p_History[0] = 1
             print("RANGE OUT")
         elif (secondary_mode == 1):
