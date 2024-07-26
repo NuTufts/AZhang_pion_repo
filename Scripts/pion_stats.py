@@ -51,7 +51,7 @@ class pion_container:
         self.CCNC = CCNC
         self.init_pos = init_pos
         self.end_pos = end_pos
-        self.colinear_ang = 0
+        self.colinear_ang = None
         self.colinear_TID = -1
         self.secondary_TIDs = []
         self.secondary_PDGs = []
@@ -80,7 +80,7 @@ pion_tree.Branch('p_TID', p_TID, 'p_TID/I')
 p_Tracklength = array('f', [0])
 pion_tree.Branch('p_Tracklength', p_Tracklength, 'p_Tracklength/F')
 p_TrueE = array('f', [0,0,0,0])
-pion_tree.Branch('p_TrueE', p_TrueE, 'p_TrueE/F')
+pion_tree.Branch('p_TrueE', p_TrueE, 'p_TrueE[4]/F')
 p_Contained = array('i', [0])
 pion_tree.Branch('p_Contained', p_Contained, 'p_Contained/I')
 nSecondaries = array('i', [0])
@@ -184,8 +184,9 @@ for entry in t1:
         for i in range(0, nTrueSimParts):
             # Add a secondary particle to the pion container
             if (event_pions[j].true_trackID == trueSimPartMID[i] and trueSimPartProcess[i] != 0):
-                init_pos = [trueSimPartX[i], trueSimPartY[i], trueSimPartZ[i]]
-                event_pions[j].add_secondary(trueSimPartTID[i], trueSimPartPDG[i], trueSimPartProcess[i], init_pos)
+                if (np.abs(trueSimPartPDG[i]) != 211):
+                    init_pos = [trueSimPartX[i], trueSimPartY[i], trueSimPartZ[i]]
+                    event_pions[j].add_secondary(trueSimPartTID[i], trueSimPartPDG[i], trueSimPartProcess[i], init_pos)
             
             # Calculate colinear angle to the pion of current primary
             
@@ -195,20 +196,27 @@ for entry in t1:
                     pion_mv = [event_pions[j].true_pionE[0], event_pions[j].true_pionE[1], event_pions[j].true_pionE[2]]
                     new_mv = [trueSimPartPx[i], trueSimPartPy[i], trueSimPartPz[i]]
                     colinearity = mom_angle(pion_mv, new_mv)
-                    if (np.abs(colinearity) >= event_pions[j].colinear_ang):
+                    if (event_pions[j].colinear_ang == None):
+                        event_pions[j].set_colinear(colinearity, trueSimPartTID[i])
+                    elif (np.abs(colinearity) >= np.abs(event_pions[j].colinear_ang)):
                         event_pions[j].set_colinear(colinearity, trueSimPartTID[i])
 
         TID_found = False
         reco_found = False
-        primary_index = []
+        sec_index = []
+        prim_index = []
         for k in range(0, nTracks):
             if(trackIsSecondary[k] != 1):
                 if(event_pions[j].true_trackID == trackTrueTID[k]):
                     TID_found = True
                     if(trackPID[k] == 211 or trackPID[k] == -211):
                         reco_found = True
-            track_ancestor = prim_ancestor(trueSimPartTID, trackTrueTID[k])
-            primary_index.append(track_ancestor)
+
+                track_ancestor = prim_ancestor(trueSimPartTID, trackTrueTID[k])
+                prim_index.append(track_ancestor)
+            else:
+                track_ancestor = prim_ancestor(trueSimPartTID, trackTrueTID[k])
+                sec_index.append(track_ancestor)
                 
             # Fill histograms according to pion recostruction type
         if(TID_found == True):
@@ -217,19 +225,29 @@ for entry in t1:
             else: # Track was found, but incorrect PDG
                 event_pions[j].set_reco_status(1)
         else:
-            primary_found = False
-            for i in range(0, len(primary_index)):
-                if(primary_index[i] == 999):
+            sec_found = False
+            prim_found = False
+            for i in range(0, len(sec_index)):
+                if(sec_index[i] == 999):
                     continue
                 # Track not found, but a secondary of the pion was found
-                if(trueSimPartTID[primary_index[i]] == event_pions[j].true_trackID):
-                    primary_found = True
+                if(trueSimPartTID[sec_index[i]] == event_pions[j].true_trackID):
+                    sec_found = True
+                    break
+            for i in range(0, len(prim_index)):
+                if(prim_index[i] == 999):
+                    continue
+                # Track not found, but a secondary of the pion was found
+                if(trueSimPartTID[prim_index[i]] == event_pions[j].true_trackID):
+                    prim_found = True
                     break
             # Track not found, secondaries found
-            if(primary_found == True):
+            if(sec_found == True):
                 event_pions[j].set_reco_status(2)
-            else: # Track not found, secondaries not found
+            elif (prim_found == True): # Track not found, secondaries not found
                 event_pions[j].set_reco_status(3)
+            else: 
+                event_pions[j].set_reco_status(4)
     # Fill branch info
     for i in range(0,len(event_pions)):
         p_TID[0] = event_pions[i].true_trackID
@@ -243,7 +261,11 @@ for entry in t1:
         p_EventWeight[0] = event_pions[i].xsecWeight
         p_CCNC[0] = event_pions[i].CCNC
         p_colinearTID[0] = event_pions[i].colinear_TID
-        p_colinearAng[0] = event_pions[i].colinear_ang
+        colinearity = event_pions[i].colinear_ang
+        if colinearity == None:   
+            p_colinearAng[0] = -1.1
+        else:
+            p_colinearAng[0] = colinearity
 
         p_Reco_status[0] = event_pions[i].reco_status
         
@@ -266,18 +288,18 @@ for entry in t1:
         p_Interactions[0] = 0
         KE = event_pions[i].true_endE[3] - np.sqrt(event_pions[i].true_endE[3]**2 
         - (event_pions[i].true_endE[0]**2 + event_pions[i].true_endE[1]**2 + event_pions[i].true_endE[2]**2))
-        if (event_pions[i].contained == 0):
-            p_History[0] = 0
-            # print("UNCONTAINED")
-        elif(KE <= 0.010): # 10 keV
-            p_History[0] = 1
-            # print("RANGE OUT")
-        elif (secondary_mode[1] == 1):
+        if (secondary_mode[1] == 1):
             p_History[0] = 2
             # print("SEC INTERACT")
         elif (secondary_mode[0] == 1):
             p_History[0] = 3
             # print("DECAY IN FLIGHT")
+        elif(KE <= 0.010): # 10 keV
+            p_History[0] = 1
+            # print("RANGE OUT")
+        elif (event_pions[i].contained == 0):
+            p_History[0] = 0
+            # print("UNCONTAINED")
 
         if (secondary_mode[1] == 1):
             p_Interactions[0] = 1
@@ -287,8 +309,10 @@ for entry in t1:
             for j in range(0,nSecondaries[0]):
                 test_length = np.linalg.norm(np.array(event_pions[i].init_pos) 
                 - np.array(event_pions[i].secondary_init_pos[j]))
-                if test_length <= int_dist:
+                if test_length < int_dist:
                     int_dist = test_length
+            if (event_pions[i].track_length < int_dist):
+                int_dist = event_pions[i].track_length
             p_Dist_to_interaction[0] = int_dist
         if (p_History[0] == 4):
             print("ERROR: EXCEPTION FOR PION MODE, KE is ", KE)
