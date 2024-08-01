@@ -3,7 +3,7 @@
 # Purpose: Find Reconstruction Efficiencies of True Primary Pions ordered by pion history,
 # reco status type, and most colinear primary. Counterpart of dist_eff.py
 # Data Created: June 5th, 2024
-# Last Modified: 3rd, 2024
+# Last Modified: July 31st, 2024
 
 import ROOT as rt
 import numpy as np
@@ -106,7 +106,7 @@ for entry in t1:
     sec_TrueTID = entry.sec_TrueTID
     sec_TrueSource = entry.sec_TrueSource
 
-    if (p_Dist_to_interaction > 15 and p_Reco_status == 4):
+    if (p_Dist_to_interaction > 15 and p_Reco_status == 4 and p_colinearAng < np.sqrt(3)/2):
         pion_event = [p_FileID,p_Run,p_Subrun,p_EventID]
         missed_long_pions.append(pion_event)
         missed_long_pions_counter += 1
@@ -352,58 +352,59 @@ h_Flight_decay_nc.Draw()
 h_Sec_int_nc.Draw()
 
 # Single histogram function
-def write_canvas(h1, name):
+def write_canvas(h1, name, draw_option):
     c_name = "c" + name[1:]
     canvas = rt.TCanvas(str(c_name))
     # h_temp.SetFillColor(rt.kViolet-4)
-    h1.Draw("HIST")
+    h1.Draw(str(draw_option))
     canvas.Update()
-    canvas.Draw("HIST")
+    canvas.Draw(str(draw_option))
     canvas.Write()
-# write_canvas(h_Reco_colinear_cc, "h_Reco_colinear_cc")
-# write_canvas(h_misID_colinear_cc, "h_misID_colinear_cc")
-# write_canvas(h_Sec_colinear_cc, "h_Sec_colinear_cc")
-write_canvas(h_Prim_colinear_cc, "h_Prim_colinear_cc")
-# write_canvas(h_Missing_colinear_cc, "h_Missing_colinear_cc")
-# write_canvas(h_Truecolinear_cc, "h_Truecolinear_cc")
-write_canvas(h_Effcolinear_cc, "h_Effcolinear_cc")
 
-write_canvas(h_Hist_reco_cc, "h_Hist_reco_cc")
-write_canvas(h_Hist_misID_cc, "h_Hist_misID_cc")
-write_canvas(h_Hist_sec_cc, "h_Hist_sec_cc")
-write_canvas(h_Hist_prim_cc, "h_Hist_prim_cc")
-write_canvas(h_Hist_missing_cc, "h_Hist_missing_cc")
+# write_canvas(h_Reco_colinear_cc, "h_Reco_colinear_cc", "HIST")
+# write_canvas(h_misID_colinear_cc, "h_misID_colinear_cc", "HIST")
+# write_canvas(h_Sec_colinear_cc, "h_Sec_colinear_cc", "HIST")
+write_canvas(h_Prim_colinear_cc, "h_Prim_colinear_cc", "HIST")
+# write_canvas(h_Missing_colinear_cc, "h_Missing_colinear_cc", "HIST")
+# write_canvas(h_Truecolinear_cc, "h_Truecolinear_cc", "HIST")
+write_canvas(h_Effcolinear_cc, "h_Effcolinear_cc", "HIST")
 
-write_canvas(h_Uncontained_cc, "h_Uncontained_cc")
-write_canvas(h_Range_cc, "h_Range_cc")
-write_canvas(h_Flight_decay_cc, "h_Flight_decay_cc")
-write_canvas(h_Sec_int_cc, "h_Sec_int_cc")
+write_canvas(h_Hist_reco_cc, "h_Hist_reco_cc", "HIST")
+write_canvas(h_Hist_misID_cc, "h_Hist_misID_cc", "HIST")
+write_canvas(h_Hist_sec_cc, "h_Hist_sec_cc", "HIST")
+write_canvas(h_Hist_prim_cc, "h_Hist_prim_cc", "HIST")
+write_canvas(h_Hist_missing_cc, "h_Hist_missing_cc", "HIST")
+
+write_canvas(h_Uncontained_cc, "h_Uncontained_cc", "HIST")
+write_canvas(h_Range_cc, "h_Range_cc", "HIST")
+write_canvas(h_Flight_decay_cc, "h_Flight_decay_cc", "HIST")
+write_canvas(h_Sec_int_cc, "h_Sec_int_cc", "HIST")
 
 
-# write_canvas(h_Reco_colinear_nc, "h_Reco_colinear_nc")
-# write_canvas(h_misID_colinear_nc, "h_misID_colinear_nc")
-# write_canvas(h_Sec_colinear_nc, "h_Sec_colinear_nc")
-write_canvas(h_Prim_colinear_nc, "h_prim_colinear_nc")
-# write_canvas(h_Missing_colinear_nc, "h_Missing_colinear_nc")
-# write_canvas(h_Truecolinear_nc, "h_Truecolinear_nc")
-write_canvas(h_Effcolinear_nc, "h_Effcolinear_nc")
+# write_canvas(h_Reco_colinear_nc, "h_Reco_colinear_nc", "HIST")
+# write_canvas(h_misID_colinear_nc, "h_misID_colinear_nc", "HIST")
+# write_canvas(h_Sec_colinear_nc, "h_Sec_colinear_nc", "HIST")
+write_canvas(h_Prim_colinear_nc, "h_prim_colinear_nc", "HIST")
+# write_canvas(h_Missing_colinear_nc, "h_Missing_colinear_nc", "HIST")
+# write_canvas(h_Truecolinear_nc, "h_Truecolinear_nc", "HIST")
+write_canvas(h_Effcolinear_nc, "h_Effcolinear_nc", "HIST")
 
-write_canvas(h_Hist_reco_nc, "h_Hist_reco_nc")
-write_canvas(h_Hist_misID_nc, "h_Hist_misID_nc")
-write_canvas(h_Hist_sec_nc, "h_Hist_sec_nc")
-write_canvas(h_Hist_prim_nc, "h_Hist_prim_nc")
-write_canvas(h_Hist_missing_nc, "h_Hist_missing_nc")
+write_canvas(h_Hist_reco_nc, "h_Hist_reco_nc", "HIST")
+write_canvas(h_Hist_misID_nc, "h_Hist_misID_nc", "HIST")
+write_canvas(h_Hist_sec_nc, "h_Hist_sec_nc", "HIST")
+write_canvas(h_Hist_prim_nc, "h_Hist_prim_nc", "HIST")
+write_canvas(h_Hist_missing_nc, "h_Hist_missing_nc", "HIST")
 
-write_canvas(h_Uncontained_nc, "h_Uncontained_nc")
-write_canvas(h_Range_nc, "h_Range_nc")
-write_canvas(h_Flight_decay_nc, "h_Flight_decay_nc")
-write_canvas(h_Sec_int_nc, "h_Sec_int_nc")
+write_canvas(h_Uncontained_nc, "h_Uncontained_nc", "HIST")
+write_canvas(h_Range_nc, "h_Range_nc", "HIST")
+write_canvas(h_Flight_decay_nc, "h_Flight_decay_nc", "HIST")
+write_canvas(h_Sec_int_nc, "h_Sec_int_nc", "HIST")
 
-write_canvas(h_range_detect_eff_cc, "h_range_detect_eff_cc")
-write_canvas(h_range_detect_eff_nc, "h_range_detect_eff_nc")
+write_canvas(h_range_detect_eff_cc, "h_range_detect_eff_cc", "HIST")
+write_canvas(h_range_detect_eff_nc, "h_range_detect_eff_nc", "HIST")
 
-# print(detect_count[0], detect_count[1],detect_count[1]/detect_count[0])
-# print(prim_counter)
+print(detect_count[0], detect_count[1],detect_count[1]/detect_count[0])
+print(prim_counter)
 print(missed_long_pions_counter)
 f = open("missed_long_track_pi.txt", "w")
 f.write(str(missed_long_pions))

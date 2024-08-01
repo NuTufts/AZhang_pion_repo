@@ -2,7 +2,7 @@
 # Author: Andy Zhang
 # Purpose: Categorize pions by truth info, mainly trajectory history, colinearity with other primaries, and secondary particles.
 # Data Created: July 2nd, 2024
-# Last Modified: July 11th, 2024
+# Last Modified: July 31st, 2024
 
 
 import ROOT as rt
@@ -85,10 +85,18 @@ p_Contained = array('i', [0])
 pion_tree.Branch('p_Contained', p_Contained, 'p_Contained/I')
 nSecondaries = array('i', [0])
 pion_tree.Branch('nSecondaries', nSecondaries, 'nSecondaries/I')
+
 p_EventID = array('i', [0])
 pion_tree.Branch('p_EventID', p_EventID, 'p_EventID/I')
+p_Run = array('i', [0])
+pion_tree.Branch('p_Run', p_Run, 'p_Run/I')
+p_Subrun = array('i', [0])
+pion_tree.Branch('p_Subrun', p_Subrun, 'p_Subrun/I')
+p_FileID = array('i', [0])
+pion_tree.Branch('p_FileID', p_FileID, 'p_FileID/I')
 p_EventWeight = array('f', [0])
 pion_tree.Branch('p_EventWeight', p_EventWeight, 'p_EventWeight/F')
+
 p_CCNC = array('i', [0])
 pion_tree.Branch('p_CCNC', p_CCNC, 'p_CCNC/I')
 p_colinearTID = array('i', [0])
@@ -126,6 +134,7 @@ for entry in p1:
     totGoodPOT[0] = GoodPOT
     potTree.Fill()
 
+prim_sec_counter = [0,0]
 # Loop over all entries
 for entry in t1:
     xsecWeight = entry.xsecWeight
@@ -148,6 +157,9 @@ for entry in t1:
     trueSimPartEndY = entry.trueSimPartEndY
     trueSimPartEndZ = entry.trueSimPartEndZ
     event = entry.event
+    run = entry.run
+    subrun = entry.subrun
+    fileid = entry.fileid
     trueSimPartEndE = entry.trueSimPartEndE
     trueSimPartEndPx = entry.trueSimPartEndPx
     trueSimPartEndPy = entry.trueSimPartEndPy
@@ -158,25 +170,48 @@ for entry in t1:
     trackPID = entry.trackPID
     trackIsSecondary = entry.trackIsSecondary
 
+    trueVtxX = entry.trueVtxX
+    trueVtxY = entry.trueVtxY
+    trueVtxZ = entry.trueVtxZ
+    foundVertex = entry.foundVertex
+    vtxX = entry.vtxX
+    vtxY = entry.vtxY
+    vtxZ = entry.vtxZ
+
+    # Skip the entry if the vertex wasn't reconstructed or was too far away
+    trueVtx = np.array([trueVtxX, trueVtxY, trueVtxZ])
+    recoVtx = np.array([vtxX, vtxY, vtxZ])
+    vtx_dist = np.linalg.norm(trueVtx - recoVtx) 
+    if (foundVertex == 0 or vtx_dist > 3):
+        continue
+    
     # Find pion truth Data
     pion_mv = 0
     event_pions = []
+    ancestor_index = []
     for i in range(0, nTrueSimParts):
         if trueSimPartProcess[i] == 0:
-            if (trueSimPartPDG[i] == 211 or trueSimPartPDG[i] == -211):
+            if (np.abs(trueSimPartPDG[i] == 211)):
                 init_pos = [trueSimPartX[i], trueSimPartY[i], trueSimPartZ[i]]
                 end_pos = [trueSimPartEndX[i], trueSimPartEndY[i], trueSimPartEndZ[i]]
                 TrueE = [trueSimPartPx[i], trueSimPartPy[i], trueSimPartPz[i], trueSimPartE[i]]
                 EndE = [trueSimPartEndPx[i], trueSimPartEndPy[i], trueSimPartEndPz[i], trueSimPartEndE[i]]
                 Contained = trueSimPartContained[i]
                 TID = trueSimPartTID[i]
-                EventID = event
+                EventID = [fileid,run,subrun,event]
                 EventWeight = xsecWeight
                 CCNC = trueNuCCNC
                 pion_mv = [trueSimPartPx[i], trueSimPartPy[i], trueSimPartPz[i]]
                 pion = pion_container(TID, TrueE, EndE, EventWeight, Contained, EventID, CCNC, init_pos, end_pos)
                 event_pions.append(pion)
-#                print("pion found")
+                # print("pion found")
+        
+        for k in range(0,nTracks):
+            if (trueSimPartTID[i] == trackTrueTID[k]):
+                if(trueSimPartProcess[i] == 0):
+                    ancestor_index.append([prim_ancestor(trueSimPartTID, trackTrueTID[k]),0])
+                else:
+                    ancestor_index.append([prim_ancestor(trueSimPartTID, trackTrueTID[k]),1])
 
     # Find pion-secondaries and primaries truth data
     most_colinear = [0,0]
@@ -209,7 +244,7 @@ for entry in t1:
             if(trackIsSecondary[k] != 1):
                 if(event_pions[j].true_trackID == trackTrueTID[k]):
                     TID_found = True
-                    if(trackPID[k] == 211 or trackPID[k] == -211):
+                    if(np.abs(trackPID[k] == 211)):
                         reco_found = True
 
                 track_ancestor = prim_ancestor(trueSimPartTID, trackTrueTID[k])
@@ -227,27 +262,40 @@ for entry in t1:
         else:
             sec_found = False
             prim_found = False
-            for i in range(0, len(sec_index)):
-                if(sec_index[i] == 999):
+            for i in range(0,len(ancestor_index)):
+                if (len(ancestor_index[i]) == 0 or ancestor_index[i][0] == 999):
                     continue
-                # Track not found, but a secondary of the pion was found
-                if(trueSimPartTID[sec_index[i]] == event_pions[j].true_trackID):
-                    sec_found = True
-                    break
-            for i in range(0, len(prim_index)):
-                if(prim_index[i] == 999):
-                    continue
-                # Track not found, but a secondary of the pion was found
-                if(trueSimPartTID[prim_index[i]] == event_pions[j].true_trackID):
+                if (ancestor_index[i][1] == 0 and trueSimPartMID[ancestor_index[i][0]] == event_pions[j].true_trackID):
                     prim_found = True
-                    break
+                if (ancestor_index[i][1] == 1 and trueSimPartTID[ancestor_index[i][0]] == event_pions[j].true_trackID):
+                    sec_found = True
+
+            # for i in range(0, len(sec_index)):
+            #     if(sec_index[i] == 999):
+            #         continue
+            #     # Track not found, but a secondary of the pion was found
+            #     if(trueSimPartTID[sec_index[i]] == event_pions[j].true_trackID):
+            #         sec_found = True
+            #         prim_sec_counter[0] += 1
+            #         break
+            # for i in range(0, len(prim_index)):
+            #     if(prim_index[i] == 999):
+            #         continue
+            #     # Track not found, but a secondary of the pion was found
+            #     if(trueSimPartMID[prim_index[i]] == event_pions[j].true_trackID):
+            #         prim_found = True
+            #         prim_sec_counter[1] += 1
+            #         break
             # Track not found, secondaries found
             if(sec_found == True):
                 event_pions[j].set_reco_status(2)
+                prim_sec_counter[1] += 1
             elif (prim_found == True): # Track not found, secondaries not found
                 event_pions[j].set_reco_status(3)
+                prim_sec_counter[0] += 1
             else: 
                 event_pions[j].set_reco_status(4)
+
     # Fill branch info
     for i in range(0,len(event_pions)):
         p_TID[0] = event_pions[i].true_trackID
@@ -257,8 +305,13 @@ for entry in t1:
         p_TrueE[2] = event_pions[i].true_pionE[2]
         p_TrueE[3] = event_pions[i].true_pionE[3]
         p_Contained[0] = event_pions[i].contained
-        p_EventID[0] = event_pions[i].EventID
+
+        p_FileID[0] = event_pions[i].EventID[0]
+        p_Run[0] = event_pions[i].EventID[1]
+        p_Subrun[0] = event_pions[i].EventID[2]
+        p_EventID[0] = event_pions[i].EventID[3]
         p_EventWeight[0] = event_pions[i].xsecWeight
+
         p_CCNC[0] = event_pions[i].CCNC
         p_colinearTID[0] = event_pions[i].colinear_TID
         colinearity = event_pions[i].colinear_ang
@@ -291,7 +344,7 @@ for entry in t1:
         if (secondary_mode[1] == 1):
             p_History[0] = 2
             # print("SEC INTERACT")
-        elif (secondary_mode[0] == 1):
+        elif (secondary_mode[0] == 1 and KE > 0.010):
             p_History[0] = 3
             # print("DECAY IN FLIGHT")
         elif(KE <= 0.010): # 10 keV
@@ -323,4 +376,5 @@ pion_tree.Write("",rt.TObject.kOverwrite)
 potTree.Write("",rt.TObject.kOverwrite)
 f_out.Close()
 
+print(prim_sec_counter)
 # Also add extra information on the pion secondaries' histories, i.e. if they have secondary interactions and decays. Take note of
